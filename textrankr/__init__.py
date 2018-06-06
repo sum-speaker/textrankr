@@ -18,8 +18,16 @@ def xplit(value):
     return re.split('(?:(?<=[^0-9])\.|\n)', value)
 
 
-def get_sentences(text):
-    candidates = xplit(text.strip())
+def get_sentences(text, simple=True):
+    if simple:
+        candidates = xplit(text.strip())
+    else:
+        texts = _kkma.sentences(text.strip())
+
+        candidates = []
+        for t in texts:
+            candidates.extend(xplit(t.strip()))
+
     sentences = []
     index = 0
     for candidate in candidates:
