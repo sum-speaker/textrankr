@@ -18,15 +18,21 @@ def xplit(value):
     return re.split('(?:(?<=[^0-9])\.|\n)', value)
 
 
-def get_sentences(text, simple=True):
+def get_sentences(text, ignore_words=[], simple=False):
+    if len(text) > 10 and not re.search('[ㄱ-힣]', text):
+        simple = True
+        print("forced selected simple split!")
+
     if simple:
         candidates = xplit(text.strip())
     else:
         texts = _kkma.sentences(text.strip())
-
+        candidates = texts
+        '''
         candidates = []
         for t in texts:
             candidates.extend(xplit(t.strip()))
+        '''
 
     sentences = []
     index = 0
@@ -34,6 +40,9 @@ def get_sentences(text, simple=True):
         while len(candidate) and (candidate[-1] == '.' or candidate[-1] == ' '):
             candidate = candidate.strip(' ').strip('.')
         if len(candidate):
+            for it in ignore_words:
+                if re.match(it, candidate):
+                    continue
             sentences.append(Sentence(candidate + '.', index))
             index += 1
     return sentences
@@ -85,15 +94,19 @@ class Sentence:
 
 class TextRank:
 
-    def __init__(self, text):
-        self.sentences = get_sentences(text)
+    def __init__(self, text, ignore_words=[]):
+        self.sentences = get_sentences(text, ignore_words)
         self.graph = build_graph(self.sentences)
         self.pagerank = networkx.pagerank(self.graph, weight='weight')
         self.reordered = sorted(self.pagerank, key=self.pagerank.get, reverse=True)
         self.nouns = []
+
         for sentence in self.sentences:
             self.nouns += sentence.nouns
         self.bow = collections.Counter(self.nouns)
+
+    def get_sentences(self):
+        return [sentence.text for sentence in self.sentences]
 
     def summarize(self, count=3):
         if not hasattr(self, 'reordered'):
